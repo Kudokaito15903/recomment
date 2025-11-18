@@ -7,14 +7,17 @@ Initializes databases, creates tables, and sets up the environment
 import os
 import sys
 import time
-import subprocess
-import asyncio
 from pathlib import Path
+
+import pandas as pd
 import yaml
 import psycopg2
 import redis
-from pyspark.sql import SparkSession
-from delta import configure_spark_with_delta_pip
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.append(str(PROJECT_ROOT))
+
+from src.data.local_store import LocalDataStore
 
 def print_step(step: str):
     """Print setup step"""
@@ -54,8 +57,8 @@ class SetupManager:
         print_step("Checking dependencies")
         
         required_packages = [
-            'pyspark', 'delta-spark', 'mlflow', 'kafka-python',
-            'fastapi', 'uvicorn', 'redis', 'psycopg2-binary'
+            'mlflow', 'kafka-python',
+            'fastapi', 'uvicorn', 'redis', 'psycopg2-binary', 'pandas'
         ]
         
         missing_packages = []
@@ -237,93 +240,50 @@ class SetupManager:
             print_error(f"Redis setup failed: {e}")
             return False
     
-    def setup_delta_lake(self):
-        """Setup Delta Lake tables"""
-        print_step("Setting up Delta Lake tables")
+    def setup_local_storage(self):
+        """Ensure local CSV-based storage is ready."""
+        print_step("Initializing local data storage")
         
         try:
-            # Initialize Spark with Delta Lake
-            builder = SparkSession.builder.appName("Setup") \
-                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-                .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+            store = LocalDataStore(self.config)
+            created_files = []
             
-            spark = configure_spark_with_delta_pip(builder).getOrCreate()
+            if not store.interactions_path.exists():
+                sample_interactions = pd.DataFrame([
+                    {'user_id': 1, 'item_id': 101, 'rating': 4.5, 'timestamp': time.time(), 'interaction_type': 'rating', 'session_id': 'session_bootstrap'},
+                    {'user_id': 2, 'item_id': 102, 'rating': 4.0, 'timestamp': time.time(), 'interaction_type': 'view', 'session_id': 'session_bootstrap'},
+                ])
+                sample_interactions.to_csv(store.interactions_path, index=False)
+                created_files.append(store.interactions_path)
             
-            # Create Delta Lake directory
-            delta_path = "/tmp/delta-tables"
-            os.makedirs(delta_path, exist_ok=True)
+            if not store.items_path.exists():
+                sample_items = pd.DataFrame([
+                    {'item_id': 101, 'title': 'Sample Item', 'category': 'demo', 'price': 9.99, 'brand': 'DemoBrand', 'description': 'Placeholder item for setup'},
+                    {'item_id': 102, 'title': 'Second Item', 'category': 'demo', 'price': 14.99, 'brand': 'DemoBrand', 'description': 'Another placeholder item'},
+                ])
+                sample_items.to_csv(store.items_path, index=False)
+                created_files.append(store.items_path)
             
-            # Create sample data and tables
-            self.create_delta_tables(spark, delta_path)
+            for path, columns in [
+                (store.user_profiles_path, ['user_id', 'avg_rating', 'interaction_count', 'last_interaction']),
+                (store.item_features_path, ['item_id', 'avg_rating', 'interaction_count', 'last_interaction']),
+            ]:
+                if not path.exists():
+                    pd.DataFrame(columns=columns).to_csv(path, index=False)
+                    created_files.append(path)
             
-            spark.stop()
-            print_success("Delta Lake tables setup completed")
+            if created_files:
+                print("  ✓ Created local storage files:")
+                for file in created_files:
+                    print(f"    - {file}")
+            else:
+                print("  ✓ Local storage already initialized")
+            
             return True
-            
+        
         except Exception as e:
-            print_error(f"Delta Lake setup failed: {e}")
+            print_error(f"Local storage setup failed: {e}")
             return False
-    
-    def create_delta_tables(self, spark, delta_path: str):
-        """Create Delta Lake tables with sample data"""
-        import pandas as pd
-        from pyspark.sql.types import StructType, StructField, LongType, DoubleType, StringType, TimestampType
-        
-        # User interactions table
-        interactions_schema = StructType([
-            StructField("user_id", LongType(), True),
-            StructField("item_id", LongType(), True),
-            StructField("rating", DoubleType(), True),
-            StructField("interaction_type", StringType(), True),
-            StructField("timestamp", DoubleType(), True),
-            StructField("session_id", StringType(), True)
-        ])
-        
-        # Create sample interactions data
-        sample_data = []
-        for i in range(10000):
-            sample_data.append((
-                int(i % 1000),  # user_id
-                int(i % 500),   # item_id
-                float(3.0 + (i % 3)),  # rating
-                "rating",       # interaction_type
-                float(time.time()),  # timestamp
-                f"session_{i % 100}"  # session_id
-            ))
-        
-        interactions_df = spark.createDataFrame(sample_data, interactions_schema)
-        
-        # Write to Delta Lake
-        interactions_df.write.format("delta") \
-            .mode("overwrite") \
-            .save(f"{delta_path}/interactions")
-        
-        print("  ✓ Created interactions table")
-        
-        # User profiles table
-        user_profiles_schema = StructType([
-            StructField("user_id", LongType(), True),
-            StructField("avg_rating", DoubleType(), True),
-            StructField("interaction_count", LongType(), True),
-            StructField("last_interaction", DoubleType(), True)
-        ])
-        
-        # Create sample user profiles
-        user_data = []
-        for i in range(1000):
-            user_data.append((
-                int(i),
-                float(3.5 + (i % 2) * 0.5),
-                int(10 + i % 50),
-                float(time.time())
-            ))
-        
-        user_profiles_df = spark.createDataFrame(user_data, user_profiles_schema)
-        user_profiles_df.write.format("delta") \
-            .mode("overwrite") \
-            .save(f"{delta_path}/user_profiles")
-        
-        print("  ✓ Created user profiles table")
     
     def setup_kafka_topics(self):
         """Setup Kafka topics"""
@@ -405,8 +365,6 @@ class SetupManager:
             "models",
             "artifacts",
             "checkpoints",
-            "/tmp/delta-tables",
-            "/tmp/spark-checkpoint",
             "/tmp/mlflow-artifacts"
         ]
         
@@ -425,10 +383,10 @@ class SetupManager:
             ("Check dependencies", self.check_dependencies),
             ("Check Docker services", self.check_docker_services),
             ("Create directories", self.create_directories),
+            ("Setup Local Storage", self.setup_local_storage),
             ("Setup PostgreSQL", self.setup_postgresql),
             ("Setup Redis", self.setup_redis),
             ("Setup Kafka topics", self.setup_kafka_topics),
-            ("Setup Delta Lake", self.setup_delta_lake),
             ("Setup MLflow", self.setup_mlflow)
         ]
         

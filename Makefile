@@ -151,8 +151,6 @@ clean:
 	rm -rf htmlcov/
 	rm -rf build/
 	rm -rf dist/
-	rm -rf /tmp/spark-checkpoint/
-	rm -rf /tmp/delta-warehouse/
 	@echo "✅ Cleanup completed"
 
 # Monitoring and health checks

@@ -14,13 +14,11 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
 import mlflow
 import mlflow.sklearn
-from pyspark.sql import SparkSession
 import structlog
 import yaml
-from delta import DeltaTable
 
 from ..utils.metrics import RecommendationMetrics
-from ..streaming.kafka_producer import KafkaProducer
+from ..data.local_store import LocalDataStore
 
 logger = structlog.get_logger()
 
@@ -31,12 +29,7 @@ class ModelTrainer:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
-        # Initialize Spark for data processing
-        self.spark = SparkSession.builder \
-            .appName("ModelTraining") \
-            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-            .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-            .getOrCreate()
+        self.data_store = LocalDataStore(self.config)
         
         # MLflow setup
         mlflow.set_tracking_uri(self.config['mlflow']['tracking_uri'])
@@ -56,11 +49,11 @@ class ModelTrainer:
         }
     
     def load_training_data(self) -> Tuple[pd.DataFrame, np.ndarray]:
-        """Load and prepare training data from Delta Lake"""
+        """Load and prepare training data from the local store"""
         try:
-            # Load interactions from Delta Lake
-            interactions_df = self.spark.read.format("delta").load("/delta/interactions")
-            interactions_pd = interactions_df.toPandas()
+            interactions_pd = self.data_store.load_interactions()
+            if interactions_pd.empty:
+                raise ValueError("Interaction dataset is empty")
             
             logger.info(f"Loaded {len(interactions_pd)} interactions")
             
@@ -76,7 +69,7 @@ class ModelTrainer:
             return interactions_pd, user_item_matrix.values
             
         except Exception as e:
-            logger.warning(f"Could not load data from Delta Lake: {e}")
+            logger.warning(f"Could not load data from local store: {e}")
             # Generate synthetic data for demonstration
             return self._generate_synthetic_data()
     

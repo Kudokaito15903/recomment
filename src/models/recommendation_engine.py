@@ -5,7 +5,6 @@ Implements SVD, NMF, and hybrid algorithms with high-performance optimizations
 
 import asyncio
 import time
-import pickle
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
@@ -16,12 +15,11 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import mlflow
 import mlflow.sklearn
-from delta import DeltaTable
-from pyspark.sql import SparkSession
 import structlog
 
 from ..utils.metrics import calculate_ndcg, calculate_map, calculate_hit_rate, calculate_coverage
 from ..streaming.kafka_producer import KafkaProducer
+from ..data.local_store import LocalDataStore
 
 logger = structlog.get_logger()
 
@@ -37,12 +35,8 @@ class RecommendationEngine:
         self.feature_scaler = MinMaxScaler()
         self.kafka_producer = None
         
-        # Initialize Spark session
-        self.spark = SparkSession.builder \
-            .appName(config['streaming']['spark']['app_name']) \
-            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-            .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-            .getOrCreate()
+        # Local data access (replaces PySpark/Delta dependency)
+        self.data_store = LocalDataStore(config)
         
         # MLflow setup
         mlflow.set_tracking_uri(config['mlflow']['tracking_uri'])
@@ -104,7 +98,7 @@ class RecommendationEngine:
             )
             
             # Train on user-item matrix (placeholder - replace with actual data)
-            # This would be loaded from your Delta Lake tables
+            # This would be loaded from the LocalDataStore in production
             sample_matrix = np.random.rand(10000, 1000)  # Replace with actual data
             svd.fit(sample_matrix)
             
@@ -157,13 +151,11 @@ class RecommendationEngine:
             return nmf
     
     async def _load_interaction_data(self):
-        """Load user-item interaction data from Delta Lake"""
+        """Load user-item interaction data from the local store"""
         try:
-            # Read from Delta Lake table
-            interactions_df = self.spark.read.format("delta").load("/delta/interactions")
-            
-            # Convert to pandas for matrix operations
-            interactions_pd = interactions_df.toPandas()
+            interactions_pd = self.data_store.load_interactions()
+            if interactions_pd.empty:
+                raise ValueError("Interaction dataset is empty")
             
             # Create user-item matrix
             self.user_item_matrix = interactions_pd.pivot(
@@ -374,14 +366,19 @@ class RecommendationEngine:
                 interaction
             )
             
+            
             # Update local cache if needed
             user_id = interaction['user_id']
             item_id = interaction['item_id']
             rating = interaction['rating']
             
-            if (user_id in self.user_item_matrix.index and 
+            if (self.user_item_matrix is not None and
+                user_id in self.user_item_matrix.index and 
                 item_id in self.user_item_matrix.columns):
                 self.user_item_matrix.loc[user_id, item_id] = rating
+
+            # Persist interaction locally for future training sessions
+            self.data_store.append_interaction(interaction)
             
             logger.info(f"Recorded interaction: user {user_id}, item {item_id}, rating {rating}")
             

@@ -36,6 +36,12 @@ features:
     method: "minmax"
     feature_range: [0, 1]
 
+data_sources:
+  interactions: "data/sample_interactions.csv"
+  items: "data/sample_items.csv"
+  user_profiles: "data/user_profiles.csv"
+  item_features: "data/item_features.csv"
+
 # Streaming configuration
 streaming:
   kafka:
@@ -49,9 +55,6 @@ streaming:
     app_name: "RecommendationEngine"
     batch_interval: "10 seconds"
     checkpoint_location: "/tmp/spark-checkpoint"
-    
-  delta_lake:
-    warehouse_path: "/tmp/delta-warehouse"
     
 # API configuration
 api:

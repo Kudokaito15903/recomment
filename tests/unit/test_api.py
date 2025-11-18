@@ -13,10 +13,9 @@ import sys
 from unittest.mock import MagicMock
 
 # Mock the heavy dependencies
-sys.modules['pyspark'] = MagicMock()
-sys.modules['pyspark.sql'] = MagicMock()
-sys.modules['delta'] = MagicMock()
 sys.modules['mlflow'] = MagicMock()
+sys.modules['mlflow.sklearn'] = MagicMock()
+sys.modules['mlflow'].sklearn = sys.modules['mlflow.sklearn']
 
 # Now we can import our API
 from src.api.recommendation_api import app

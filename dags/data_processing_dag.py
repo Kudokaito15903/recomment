@@ -33,7 +33,7 @@ dag = DAG(
 )
 
 def process_interactions_task():
-    """Process user interactions from Kafka and update Delta Lake"""
+    """Process user interactions from Kafka and update the local feature store"""
     print("Processing user interactions from Kafka...")
     # This would call your actual processing logic
     # from src.streaming.feature_processor import process_interactions

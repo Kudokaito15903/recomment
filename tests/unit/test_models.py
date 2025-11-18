@@ -10,10 +10,9 @@ from sklearn.decomposition import TruncatedSVD, NMF
 
 # Mock heavy dependencies
 import sys
-sys.modules['pyspark'] = MagicMock()
-sys.modules['pyspark.sql'] = MagicMock()
-sys.modules['delta'] = MagicMock()
 sys.modules['mlflow'] = MagicMock()
+sys.modules['mlflow.sklearn'] = MagicMock()
+sys.modules['mlflow'].sklearn = sys.modules['mlflow.sklearn']
 
 from src.models.recommendation_engine import RecommendationEngine
 
@@ -21,8 +20,37 @@ class TestRecommendationEngine:
     """Test cases for the recommendation engine"""
     
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, tmp_path):
         """Mock configuration for testing"""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        
+        interactions_path = data_dir / "interactions.csv"
+        items_path = data_dir / "items.csv"
+        user_profiles_path = data_dir / "user_profiles.csv"
+        item_features_path = data_dir / "item_features.csv"
+        
+        pd.DataFrame([{
+            'user_id': 1,
+            'item_id': 1,
+            'rating': 4.5,
+            'timestamp': 1640995200.0,
+            'interaction_type': 'rating',
+            'session_id': 'session_1'
+        }]).to_csv(interactions_path, index=False)
+        
+        pd.DataFrame([{
+            'item_id': 1,
+            'title': 'Test Item',
+            'category': 'demo',
+            'price': 9.99,
+            'brand': 'Demo',
+            'description': 'Sample'
+        }]).to_csv(items_path, index=False)
+        
+        pd.DataFrame(columns=['user_id', 'avg_rating', 'interaction_count', 'last_interaction']).to_csv(user_profiles_path, index=False)
+        pd.DataFrame(columns=['item_id', 'avg_rating', 'interaction_count', 'last_interaction']).to_csv(item_features_path, index=False)
+        
         return {
             'models': {
                 'svd': {
@@ -39,29 +67,25 @@ class TestRecommendationEngine:
                 }
             },
             'streaming': {
-                'spark': {'app_name': 'TestApp'},
                 'kafka': {'bootstrap_servers': 'localhost:9092'}
             },
             'mlflow': {
                 'tracking_uri': 'sqlite:///test.db',
                 'experiment_name': 'test_experiment'
+            },
+            'data_sources': {
+                'interactions': str(interactions_path),
+                'items': str(items_path),
+                'user_profiles': str(user_profiles_path),
+                'item_features': str(item_features_path)
             }
         }
     
     @pytest.fixture
-    def engine(self, mock_config, tmp_path):
+    def engine(self, mock_config):
         """Create recommendation engine instance for testing"""
-        with patch('src.models.recommendation_engine.SparkSession'):
-            engine = RecommendationEngine.__new__(RecommendationEngine)
-            engine.config = mock_config
-            engine.models = {}
-            engine.user_item_matrix = None
-            engine.feature_pipeline = None
-            engine.model_metrics = {
-                'svd': {'rmse': 0.84, 'ndcg_10': 0.78, 'map_10': 0.73},
-                'nmf': {'rmse': 0.86, 'coverage': 0.942, 'catalog_coverage': 0.785}
-            }
-            return engine
+        engine = RecommendationEngine(mock_config)
+        return engine
     
     def test_create_sample_data(self, engine):
         """Test sample data generation"""

@@ -1,6 +1,4 @@
 # Core dependencies
-pyspark
-delta-spark
 mlflow
 kafka-python
 fastapi
