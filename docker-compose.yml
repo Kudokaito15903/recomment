@@ -1,29 +1,60 @@
 version: '3.8'
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-
+  # ============================================
+  # KAFKA (KRaft Mode)
+  # ============================================
   kafka:
     image: confluentinc/cp-kafka:latest
-    depends_on:
-      - zookeeper
+    container_name: kafka
+    hostname: kafka
     ports:
       - "9092:9092"
+      - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # KRaft Configuration
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      
+      # Controller Configuration
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      
+      # Listener Configuration
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      # Storage Configuration
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      CLUSTER_ID: "s7B1E1APQeWyaDqCwWA8nQ"
+      
+      # Replication & Performance
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
 
+  # ============================================
+  # POSTGRESQL (Application Database)
+  # ============================================
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
+    container_name: postgres
+    hostname: postgres
+    user: postgres
     environment:
       POSTGRES_DB: recommendations
       POSTGRES_USER: postgres
@@ -32,56 +63,133 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d recommendations"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
 
+  # ============================================
+  # REDIS (Cache & Session Store)
+  # ============================================
   redis:
     image: redis:7-alpine
+    container_name: redis
+    hostname: redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
 
+  # ============================================
+  # MLFLOW (ML Model Tracking)
+  # ============================================
   mlflow:
     image: python:3.9-slim
+    container_name: mlflow
+    hostname: mlflow
     ports:
       - "5000:5000"
     environment:
-      - MLFLOW_TRACKING_URI=postgresql://postgres:postgres@postgres:5432/recommendations
+      MLFLOW_BACKEND_STORE_URI: postgresql://postgres:postgres@postgres:5432/recommendations
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - ./mlflow_artifacts:/mlflow/artifacts
     command: >
       bash -c "
-        pip install mlflow psycopg2-binary &&
+        pip install --no-cache-dir mlflow==2.9.2 psycopg2-binary &&
         mlflow server --backend-store-uri postgresql://postgres:postgres@postgres:5432/recommendations --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
       "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
 
+  # ============================================
+  # PROMETHEUS (Metrics Collection)
+  # ============================================
   prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus
+    hostname: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
 
+  # ============================================
+  # GRAFANA (Visualization & Dashboards)
+  # ============================================
   grafana:
     image: grafana/grafana:latest
+    container_name: grafana
+    hostname: grafana
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: ""
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
 
-  # Airflow services
+  # ============================================
+  # POSTGRESQL (Airflow Metadata Database)
+  # ============================================
   postgres-airflow:
-    image: postgres:15
+    image: postgres:15-alpine
+    container_name: postgres-airflow
+    hostname: postgres-airflow
+    user: postgres
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -89,24 +197,79 @@ services:
     volumes:
       - postgres_airflow_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
       interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 10s
+    networks:
+      - app-network
 
-  airflow-webserver:
-    image: apache/airflow:2.8.0
+  # ============================================
+  # AIRFLOW INIT (Database Initialization)
+  # ============================================
+  airflow-init:
+    image: apache/airflow:2.8.0-python3.9
+    container_name: airflow-init
     depends_on:
-      - postgres-airflow
-      - airflow-init
+      postgres-airflow:
+        condition: service_healthy
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
-      - AIRFLOW__CORE__FERNET_KEY=''
-      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
-      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./src:/opt/airflow/src
+      - ./config:/opt/airflow/config
+      - ./data:/opt/airflow/data
+    user: "0:0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /opt/airflow/{logs,dags,plugins}
+        chown -R 50000:0 /opt/airflow/{logs,dags,plugins}
+        exec /entrypoint airflow db migrate && airflow users create \
+          --username admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com \
+          --password admin || true
+    networks:
+      - app-network
+
+  # ============================================
+  # AIRFLOW WEBSERVER (Web Interface)
+  # ============================================
+  airflow-webserver:
+    image: apache/airflow:2.8.0-python3.9
+    container_name: airflow-webserver
+    hostname: airflow-webserver
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      AIRFLOW__WEBSERVER__RBAC: 'true'
+      AIRFLOW_UID: 50000
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -116,26 +279,37 @@ services:
       - ./data:/opt/airflow/data
     ports:
       - "8081:8080"
+    user: "50000:0"
     command: webserver
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
+    networks:
+      - app-network
 
+  # ============================================
+  # AIRFLOW SCHEDULER (Task Scheduling)
+  # ============================================
   airflow-scheduler:
-    image: apache/airflow:2.8.0
+    image: apache/airflow:2.8.0-python3.9
+    container_name: airflow-scheduler
+    hostname: airflow-scheduler
     depends_on:
-      - postgres-airflow
-      - airflow-init
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
-      - AIRFLOW__CORE__FERNET_KEY=''
-      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      AIRFLOW_UID: 50000
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -143,100 +317,38 @@ services:
       - ./src:/opt/airflow/src
       - ./config:/opt/airflow/config
       - ./data:/opt/airflow/data
+    user: "50000:0"
     command: scheduler
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
+    networks:
+      - app-network
 
-  airflow-init:
-    image: apache/airflow:2.8.0
-    depends_on:
-      - postgres-airflow
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
-      - AIRFLOW__CORE__FERNET_KEY=''
-      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./src:/opt/airflow/src
-      - ./config:/opt/airflow/config
-      - ./data:/opt/airflow/data
-    entrypoint: /bin/bash
-    command:
-      - -c
-      - |
-        function ver() {
-          printf "%04d%04d%04d%04d" $${1//./ }
-        }
-        airflow_version=$$(AIRFLOW__LOGGING__LOGGING_LEVEL=INFO && airflow version)
-        airflow_version_comparable=$$(ver $${airflow_version})
-        min_airflow_version=2.2.0
-        min_airflow_version_comparable=$$(ver $${min_airflow_version})
-        if (( airflow_version_comparable < min_airflow_version_comparable )); then
-          echo
-          echo -e "\033[1;31mERROR!!!: Too old Airflow version $${airflow_version}!\033[0m"
-          echo "The minimum Airflow version supported: $${min_airflow_version}. Only use this or higher!"
-          echo
-          exit 1
-        fi
-        if [[ -z "$${AIRFLOW_UID}" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\033[0m"
-          echo "If you are on Linux, you SHOULD follow the instructions below to set "
-          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
-          echo "For other operating systems you can safely ignore this message"
-          echo "See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
-          echo
-        fi
-        one_meg=1048576
-        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
-        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
-        disk_available=$$(df / | tail -1 | awk '{print $$4}')
-        warning_resources="false"
-        if (( mem_available < 4000 )) ; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\033[0m"
-          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
-          echo
-          warning_resources="true"
-        fi
-        if (( cpus_available < 2 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\033[0m"
-          echo "At least 2 CPUs recommended. You have $${cpus_available}"
-          echo
-          warning_resources="true"
-        fi
-        if (( disk_available < one_meg * 10 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough Disk Space available for Docker.\033[0m"
-          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
-          echo
-          warning_resources="true"
-        fi
-        if [[ $${warning_resources} == "true" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\033[0m"
-          echo "Please follow the instructions to increase amount of resources available:"
-          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
-          echo
-        fi
-        mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "$${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
-        exec /entrypoint airflow version
-    user: "0:0"
-    environment:
-      - AIRFLOW_UID=50000
-
+# ============================================
+# VOLUMES
+# ============================================
 volumes:
+  kafka_data:
+    driver: local
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
   postgres_airflow_data:
+    driver: local
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  app-network:
+    driver: bridge
+    name: recommendation-network
