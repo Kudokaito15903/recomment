@@ -116,11 +116,23 @@ class ModelTrainer:
         logger.info("Training SVD model...")
         
         with mlflow.start_run(run_name="svd_training") as run:
+            n_users, n_items = user_item_matrix.shape
+            max_components = min(n_users, n_items) - 1
+            if max_components < 2:
+                raise ValueError(
+                    f"Matrix too small for SVD: n_users={n_users}, n_items={n_items}"
+                )
+
+            candidate_components = [
+                c for c in [50, 100, 150, 200] if c <= max_components
+            ]
+            if not candidate_components:
+                candidate_components = [max_components]
+
             # Hyperparameter grid
             param_grid = {
-                'n_components': [50, 100, 150, 200],
+                'n_components': candidate_components,
                 'n_iter': [10, 20, 50],
-                'random_state': [42]
             }
             
             # Grid search for best parameters
@@ -154,12 +166,19 @@ class ModelTrainer:
                         if rmse < best_rmse:
                             best_rmse = rmse
                             best_model = svd
-                            best_params = {'n_components': n_components, 'n_iter': n_iter}
+                            best_params = {
+                                'n_components': n_components,
+                                'n_iter': n_iter,
+                                'random_state': 42
+                            }
                         
                         logger.info(f"SVD params: {n_components}, {n_iter} - RMSE: {rmse:.4f}")
             
+            if best_params is None:
+                raise ValueError("No valid SVD configuration found for given data.")
+
             # Retrain best model on full data
-            final_svd = TruncatedSVD(**best_params, random_state=42)
+            final_svd = TruncatedSVD(**best_params)
             final_svd.fit(user_item_matrix)
             
             # Calculate final metrics
@@ -207,7 +226,8 @@ class ModelTrainer:
                                 # Train model
                                 nmf = NMF(
                                     n_components=n_components,
-                                    alpha=alpha,
+                                    alpha_W=alpha,
+                                    alpha_H=alpha,
                                     l1_ratio=l1_ratio,
                                     max_iter=max_iter,
                                     random_state=42,
@@ -238,7 +258,8 @@ class ModelTrainer:
                                         best_model = nmf
                                         best_params = {
                                             'n_components': n_components,
-                                            'alpha': alpha,
+                                            'alpha_W': alpha,
+                                            'alpha_H': alpha,
                                             'l1_ratio': l1_ratio,
                                             'max_iter': max_iter
                                         }
@@ -249,8 +270,16 @@ class ModelTrainer:
                                 logger.warning(f"NMF training failed for params {n_components}, {alpha}: {e}")
                                 continue
             
+            if best_params is None:
+                raise ValueError("No valid NMF configuration found for given data.")
+
             # Retrain best model on full data
-            final_nmf = NMF(**best_params, random_state=42, init='random')
+            final_params = {
+                **best_params,
+                'random_state': 42,
+                'init': 'random'
+            }
+            final_nmf = NMF(**final_params)
             final_nmf.fit(user_item_matrix)
             
             # Calculate final metrics

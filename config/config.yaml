@@ -90,7 +90,7 @@ mlflow:
 evaluation:
   metrics:
     - "ndcg"
-    - "map"
+    - "map" 
     - "hit_rate" 
     - "coverage"
     - "rmse"

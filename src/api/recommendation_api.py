@@ -15,7 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import structlog
 import yaml
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
+from prometheus_client import (
+    Counter,
+    Histogram,
+    Gauge,
+    CollectorRegistry,
+    generate_latest
+)
 from fastapi.responses import Response
 
 from ..models.recommendation_engine import RecommendationEngine
@@ -25,11 +31,30 @@ from ..utils.metrics import MetricsCollector
 # Configure structured logging
 logger = structlog.get_logger()
 
-# Prometheus metrics
-REQUEST_COUNT = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint'])
-REQUEST_LATENCY = Histogram('api_request_duration_seconds', 'Request latency')
-ACTIVE_USERS = Gauge('active_users_total', 'Number of active users')
-RECOMMENDATION_QUALITY = Histogram('recommendation_quality', 'Recommendation quality metrics', ['metric'])
+# Prometheus metrics (isolated registry to avoid duplicate registrations)
+METRICS_REGISTRY = CollectorRegistry()
+REQUEST_COUNT = Counter(
+    'api_requests_total',
+    'Total API requests',
+    ['method', 'endpoint'],
+    registry=METRICS_REGISTRY
+)
+REQUEST_LATENCY = Histogram(
+    'api_request_duration_seconds',
+    'Request latency',
+    registry=METRICS_REGISTRY
+)
+ACTIVE_USERS = Gauge(
+    'active_users_total',
+    'Number of active users',
+    registry=METRICS_REGISTRY
+)
+RECOMMENDATION_QUALITY = Histogram(
+    'recommendation_quality',
+    'Recommendation quality metrics',
+    ['metric'],
+    registry=METRICS_REGISTRY
+)
 
 # Load configuration
 with open('config/config.yaml', 'r') as f:
@@ -39,7 +64,7 @@ class RecommendationRequest(BaseModel):
     user_id: int
     num_recommendations: int = Field(default=10, ge=1, le=50)
     exclude_seen: bool = True
-    algorithm: str = Field(default="hybrid", regex="^(svd|nmf|hybrid)$")
+    algorithm: str = Field(default="hybrid", pattern="^(svd|nmf|hybrid)$")
     
 class RecommendationResponse(BaseModel):
     user_id: int
@@ -155,7 +180,7 @@ async def health_check():
 @app.get("/metrics")
 async def get_metrics():
     """Prometheus metrics endpoint"""
-    return Response(generate_latest(), media_type="text/plain")
+    return Response(generate_latest(METRICS_REGISTRY), media_type="text/plain")
 
 @app.post("/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(
@@ -310,7 +335,7 @@ async def trigger_model_retrain(
 
 if __name__ == "__main__":
     uvicorn.run(
-        "recommendation_api:app",
+        "src.api.recommendation_api:app",
         host=config['api']['host'],
         port=config['api']['port'],
         workers=config['api']['workers'],

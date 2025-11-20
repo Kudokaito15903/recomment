@@ -93,7 +93,7 @@ services:
   # MLFLOW (ML Model Tracking)
   # ============================================
   mlflow:
-    image: python:3.9-slim
+    image: python:3.10-slim
     container_name: mlflow
     hostname: mlflow
     ports:
@@ -108,7 +108,7 @@ services:
       - ./mlflow_artifacts:/mlflow/artifacts
     command: >
       bash -c "
-        pip install --no-cache-dir mlflow==2.9.2 psycopg2-binary &&
+        pip install --no-cache-dir mlflow==3.6.0 psycopg2-binary &&
         mlflow server --backend-store-uri postgresql://postgres:postgres@postgres:5432/recommendations --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
       "
     healthcheck:

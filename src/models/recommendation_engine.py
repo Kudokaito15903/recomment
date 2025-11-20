@@ -128,10 +128,13 @@ class RecommendationEngine:
         """Train NMF model with optimal parameters"""
         with mlflow.start_run(run_name="nmf_training"):
             params = self.config['models']['nmf']
+            alpha_w = params.get('alpha_W', params.get('alpha', 0.0))
+            alpha_h = params.get('alpha_H', params.get('alpha', 0.0))
             
             nmf = NMF(
                 n_components=params['factors'],
-                alpha=params['alpha'],
+                alpha_W=alpha_w,
+                alpha_H=alpha_h,
                 l1_ratio=params['l1_ratio'],
                 max_iter=params['max_iter'],
                 random_state=params['random_state']
@@ -142,7 +145,12 @@ class RecommendationEngine:
             nmf.fit(sample_matrix)
             
             # Log metrics
-            mlflow.log_params(params)
+            log_params = {
+                **params,
+                'alpha_W': alpha_w,
+                'alpha_H': alpha_h
+            }
+            mlflow.log_params(log_params)
             mlflow.log_metric("coverage", self.model_metrics['nmf']['coverage'])
             mlflow.log_metric("catalog_coverage", self.model_metrics['nmf']['catalog_coverage'])
             

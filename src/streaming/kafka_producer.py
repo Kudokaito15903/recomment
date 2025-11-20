@@ -32,7 +32,7 @@ class KafkaProducer:
                 # Performance optimizations
                 batch_size=16384,  # 16KB batches
                 linger_ms=10,      # Wait up to 10ms for batching
-                compression_type='snappy',
+                compression_type='gzip',
                 acks='1',          # Wait for leader acknowledgment
                 retries=3,
                 max_in_flight_requests_per_connection=5,
