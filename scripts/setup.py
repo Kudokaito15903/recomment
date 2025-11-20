@@ -57,8 +57,8 @@ class SetupManager:
         print_step("Checking dependencies")
         
         required_packages = [
-            'mlflow', 'kafka-python',
-            'fastapi', 'uvicorn', 'redis', 'psycopg2-binary', 'pandas'
+            'mlflow', 'kafka',
+            'fastapi', 'uvicorn', 'redis', 'psycopg2', 'pandas'
         ]
         
         missing_packages = []
@@ -355,25 +355,25 @@ class SetupManager:
             print_error(f"MLflow setup failed: {e}")
             return False
     
-    def create_directories(self):
-        """Create necessary directories"""
-        print_step("Creating project directories")
+    # def create_directories(self):
+    #     """Create necessary directories"""
+    #     print_step("Creating project directories")
         
-        directories = [
-            "data",
-            "logs",
-            "models",
-            "artifacts",
-            "checkpoints",
-            "/tmp/mlflow-artifacts"
-        ]
+    #     directories = [
+    #         "data",
+    #         "logs",
+    #         "models",
+    #         "artifacts",
+    #         "checkpoints",
+    #         "/tmp/mlflow-artifacts"
+    #     ]
         
-        for directory in directories:
-            path = Path(directory)
-            path.mkdir(parents=True, exist_ok=True)
-            print(f"  ✓ {directory}")
+    #     for directory in directories:
+    #         path = Path(directory)
+    #         path.mkdir(parents=True, exist_ok=True)
+    #         print(f"  ✓ {directory}")
         
-        print_success("Project directories created")
+    #     print_success("Project directories created")
     
     def run_full_setup(self):
         """Run complete setup process"""
@@ -382,7 +382,7 @@ class SetupManager:
         steps = [
             ("Check dependencies", self.check_dependencies),
             ("Check Docker services", self.check_docker_services),
-            ("Create directories", self.create_directories),
+            # ("Create directories", self.create_directories),
             ("Setup Local Storage", self.setup_local_storage),
             ("Setup PostgreSQL", self.setup_postgresql),
             ("Setup Redis", self.setup_redis),
