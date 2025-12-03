@@ -1,0 +1,602 @@
+[
+  {
+    "user_id": "u_9",
+    "item_id": "p_12",
+    "event_type": "view",
+    "timestamp": 1700023277000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_28",
+    "event_type": "purchase",
+    "timestamp": 1700090856000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_4",
+    "event_type": "purchase",
+    "timestamp": 1700048463000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_47",
+    "event_type": "view",
+    "timestamp": 1700455734000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_26",
+    "event_type": "view",
+    "timestamp": 1700316338000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_4",
+    "event_type": "view",
+    "timestamp": 1700057894000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_41",
+    "event_type": "purchase",
+    "timestamp": 1700222459000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_32",
+    "event_type": "click",
+    "timestamp": 1700052712000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_15",
+    "event_type": "view",
+    "timestamp": 1700013016000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_12",
+    "event_type": "view",
+    "timestamp": 1700415427000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_20",
+    "event_type": "view",
+    "timestamp": 1700037036000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_19",
+    "event_type": "purchase",
+    "timestamp": 1700232234000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_23",
+    "event_type": "purchase",
+    "timestamp": 1700107775000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_34",
+    "event_type": "click",
+    "timestamp": 1700094263000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_34",
+    "event_type": "click",
+    "timestamp": 1700439829000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_32",
+    "event_type": "view",
+    "timestamp": 1700219733000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_36",
+    "event_type": "click",
+    "timestamp": 1700043267000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_44",
+    "event_type": "purchase",
+    "timestamp": 1700484350000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_2",
+    "event_type": "purchase",
+    "timestamp": 1700275479000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_8",
+    "event_type": "click",
+    "timestamp": 1700287458000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_25",
+    "event_type": "view",
+    "timestamp": 1700168274000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_14",
+    "event_type": "click",
+    "timestamp": 1700422845000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_20",
+    "event_type": "click",
+    "timestamp": 1700151105000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_12",
+    "event_type": "view",
+    "timestamp": 1700043294000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_33",
+    "event_type": "purchase",
+    "timestamp": 1700325283000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_2",
+    "event_type": "click",
+    "timestamp": 1700458282000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_46",
+    "event_type": "view",
+    "timestamp": 1700377181000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_33",
+    "event_type": "view",
+    "timestamp": 1700331425000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_6",
+    "event_type": "view",
+    "timestamp": 1700054778000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_31",
+    "event_type": "purchase",
+    "timestamp": 1700071451000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_44",
+    "event_type": "view",
+    "timestamp": 1700130832000
+  },
+  {
+    "user_id": "u_3",
+    "item_id": "p_3",
+    "event_type": "click",
+    "timestamp": 1700495314000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_39",
+    "event_type": "view",
+    "timestamp": 1700417967000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_48",
+    "event_type": "purchase",
+    "timestamp": 1700154345000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_5",
+    "event_type": "view",
+    "timestamp": 1700027951000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_5",
+    "event_type": "click",
+    "timestamp": 1700207147000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_10",
+    "event_type": "view",
+    "timestamp": 1700418606000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_40",
+    "event_type": "view",
+    "timestamp": 1700421995000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_11",
+    "event_type": "purchase",
+    "timestamp": 1700191384000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_3",
+    "event_type": "click",
+    "timestamp": 1700026685000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_8",
+    "event_type": "click",
+    "timestamp": 1700335242000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_29",
+    "event_type": "view",
+    "timestamp": 1700235592000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_17",
+    "event_type": "view",
+    "timestamp": 1700041922000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_25",
+    "event_type": "purchase",
+    "timestamp": 1700343458000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_40",
+    "event_type": "purchase",
+    "timestamp": 1700275879000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_17",
+    "event_type": "purchase",
+    "timestamp": 1700112039000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_29",
+    "event_type": "purchase",
+    "timestamp": 1700244067000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_4",
+    "event_type": "view",
+    "timestamp": 1700315909000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_13",
+    "event_type": "view",
+    "timestamp": 1700198936000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_18",
+    "event_type": "purchase",
+    "timestamp": 1700023569000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_15",
+    "event_type": "click",
+    "timestamp": 1700308487000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_43",
+    "event_type": "view",
+    "timestamp": 1700363103000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_14",
+    "event_type": "view",
+    "timestamp": 1700335596000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_24",
+    "event_type": "click",
+    "timestamp": 1700347337000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_9",
+    "event_type": "view",
+    "timestamp": 1700033058000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_11",
+    "event_type": "view",
+    "timestamp": 1700462545000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_16",
+    "event_type": "view",
+    "timestamp": 1700443954000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_7",
+    "event_type": "purchase",
+    "timestamp": 1700390915000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_50",
+    "event_type": "click",
+    "timestamp": 1700175998000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_33",
+    "event_type": "click",
+    "timestamp": 1700001078000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_26",
+    "event_type": "click",
+    "timestamp": 1700039233000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_46",
+    "event_type": "purchase",
+    "timestamp": 1700253438000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_47",
+    "event_type": "purchase",
+    "timestamp": 1700060146000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_7",
+    "event_type": "purchase",
+    "timestamp": 1700345482000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_5",
+    "event_type": "view",
+    "timestamp": 1700070986000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_35",
+    "event_type": "click",
+    "timestamp": 1700158193000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_2",
+    "event_type": "purchase",
+    "timestamp": 1700423984000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_37",
+    "event_type": "purchase",
+    "timestamp": 1700425857000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_50",
+    "event_type": "view",
+    "timestamp": 1700253056000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_3",
+    "event_type": "purchase",
+    "timestamp": 1700181433000
+  },
+  {
+    "user_id": "u_2",
+    "item_id": "p_4",
+    "event_type": "view",
+    "timestamp": 1700287355000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_41",
+    "event_type": "purchase",
+    "timestamp": 1700123092000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_12",
+    "event_type": "purchase",
+    "timestamp": 1700478010000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_46",
+    "event_type": "view",
+    "timestamp": 1700127286000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_12",
+    "event_type": "purchase",
+    "timestamp": 1700000978000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_28",
+    "event_type": "view",
+    "timestamp": 1700380115000
+  },
+  {
+    "user_id": "u_3",
+    "item_id": "p_19",
+    "event_type": "click",
+    "timestamp": 1700203542000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_25",
+    "event_type": "click",
+    "timestamp": 1700035963000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_11",
+    "event_type": "click",
+    "timestamp": 1700008104000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_45",
+    "event_type": "purchase",
+    "timestamp": 1700018519000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_50",
+    "event_type": "click",
+    "timestamp": 1700273381000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_3",
+    "event_type": "click",
+    "timestamp": 1700120229000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_4",
+    "event_type": "purchase",
+    "timestamp": 1700174640000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_39",
+    "event_type": "purchase",
+    "timestamp": 1700421903000
+  },
+  {
+    "user_id": "u_5",
+    "item_id": "p_43",
+    "event_type": "view",
+    "timestamp": 1700038508000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_33",
+    "event_type": "purchase",
+    "timestamp": 1700471379000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_3",
+    "event_type": "purchase",
+    "timestamp": 1700367563000
+  },
+  {
+    "user_id": "u_8",
+    "item_id": "p_25",
+    "event_type": "click",
+    "timestamp": 1700110320000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_31",
+    "event_type": "view",
+    "timestamp": 1700393328000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_33",
+    "event_type": "view",
+    "timestamp": 1700246722000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_38",
+    "event_type": "view",
+    "timestamp": 1700062286000
+  },
+  {
+    "user_id": "u_10",
+    "item_id": "p_22",
+    "event_type": "purchase",
+    "timestamp": 1700453466000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_18",
+    "event_type": "view",
+    "timestamp": 1700334972000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_29",
+    "event_type": "click",
+    "timestamp": 1700004541000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_40",
+    "event_type": "purchase",
+    "timestamp": 1700080267000
+  },
+  {
+    "user_id": "u_1",
+    "item_id": "p_42",
+    "event_type": "click",
+    "timestamp": 1700034336000
+  },
+  {
+    "user_id": "u_9",
+    "item_id": "p_20",
+    "event_type": "click",
+    "timestamp": 1700091923000
+  },
+  {
+    "user_id": "u_7",
+    "item_id": "p_39",
+    "event_type": "click",
+    "timestamp": 1700086407000
+  },
+  {
+    "user_id": "u_6",
+    "item_id": "p_45",
+    "event_type": "click",
+    "timestamp": 1700394805000
+  },
+  {
+    "user_id": "u_4",
+    "item_id": "p_10",
+    "event_type": "purchase",
+    "timestamp": 1700118385000
+  }
+]

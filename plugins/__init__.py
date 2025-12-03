@@ -1,2 +1,0 @@
-# Airflow Plugins Directory
-
