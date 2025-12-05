@@ -12,3 +12,5 @@ pydantic
 loguru
 prometheus-client
 scikit-learn
+mlflow
+pyarrow

@@ -9,38 +9,72 @@ from kafka import KafkaConsumer
 from loguru import logger
 
 from app.feature_store import FeatureStore
+from app.streaming_processor import StreamingProcessor
 
 
 class StreamingUpdater:
-    """Consumes user events and updates user feature vectors online."""
+    """Consumes user events and updates user feature vectors online with enrichment."""
 
     def __init__(self, items_path: str = "data/sample_items.json"):
         self.feature_store = FeatureStore()
+        
+        # Load items for enrichment
         with open(items_path) as f:
             items = json.load(f)
+        
+        # Initialize streaming processor with items
+        self.processor = StreamingProcessor(items=items)
+        
         self.item_vectors: Dict[str, np.ndarray] = {
             item["item_id"]: np.array(item["features"], dtype=np.float32) for item in items
         }
 
     def update_from_event(self, event: Dict) -> None:
-        user_id = event["user_id"]
-        item_id = event.get("item_id")
+        """Process event through enrichment pipeline and update features."""
+        # Process through streaming processor (enrichment + feature engineering)
+        enriched_event = self.processor.process_event(event)
+        
+        user_id = enriched_event["user_id"]
+        item_id = enriched_event.get("item_id")
         item_vector = self.item_vectors.get(item_id)
+        
         if item_vector is None:
             return
 
-        current = self.feature_store.get_user_features(user_id)
-        if current is None:
-            updated = item_vector
+        # Get base features
+        base_features = self.feature_store.get_user_features(user_id)
+        if base_features is None:
+            base_features = item_vector
         else:
-            alpha = 0.8 if event.get("event_type") == "view" else 0.5
-            updated = alpha * current + (1 - alpha) * item_vector
-        self.feature_store.set_user_features(user_id, updated)
-        logger.info(f"Updated features for user {user_id} from event {event.get('event_type')}")
+            # Update base features with exponential moving average
+            event_type = enriched_event.get("event_type", "").lower()
+            alpha = 0.8 if event_type == "view" else 0.5
+            base_features = alpha * base_features + (1 - alpha) * item_vector
+        
+        # Compute enhanced features with real-time stats
+        enhanced_features = self.processor.get_user_features(user_id, base_features)
+        
+        # Store enhanced features
+        self.feature_store.set_user_features(user_id, enhanced_features, feature_type="enhanced")
+        self.feature_store.set_user_features(user_id, base_features, feature_type="base")
+        
+        # Store metadata
+        metadata = {
+            "last_event_type": event_type,
+            "last_event_time": enriched_event.get("timestamp"),
+            "last_item_id": item_id,
+        }
+        self.feature_store.update_user_metadata(user_id, metadata)
+        
+        logger.info(f"Updated features for user {user_id} from event {event_type}")
 
     def process_events(self, events: Iterable[Dict]) -> None:
+        """Process stream of events."""
         for event in events:
-            self.update_from_event(event)
+            try:
+                self.update_from_event(event)
+            except Exception as e:
+                logger.error(f"Error processing event: {e}", exc_info=True)
 
 
 def kafka_event_stream(topic: str, bootstrap_servers: str) -> Iterable[Dict]:

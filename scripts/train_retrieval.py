@@ -15,6 +15,13 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
 from app.models.retrieval import ItemTower, UserTower  # noqa: E402
+from app.mlflow_utils import (  # noqa: E402
+    log_model_artifacts,
+    log_pytorch_model,
+    log_training_metrics,
+    log_training_params,
+    setup_mlflow,
+)
 
 # -----------------------
 # Utilities / Dataset
@@ -88,6 +95,8 @@ def train(
     seed: int = 42,
     use_normalize_embeddings: bool = True,
     temperature: float = 0.1,
+    use_mlflow: bool = True,
+    mlflow_experiment: str = "retrieval-model",
 ):
     # reproducibility
     random.seed(seed)
@@ -99,6 +108,23 @@ def train(
     data_dir = BASE_DIR / "data"
     model_dir = BASE_DIR / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
+
+    # Setup MLflow tracking
+    if use_mlflow:
+        setup_mlflow(experiment_name=mlflow_experiment)
+        
+        # Log hyperparameters
+        params = {
+            "num_epochs": num_epochs,
+            "batch_size": batch_size,
+            "lr": lr,
+            "negatives_per_positive": negatives_per_positive,
+            "val_fraction": val_fraction,
+            "seed": seed,
+            "use_normalize_embeddings": use_normalize_embeddings,
+            "temperature": temperature,
+        }
+        log_training_params(params)
 
     users = json.loads((data_dir / "sample_users.json").read_text())
     items = json.loads((data_dir / "sample_items.json").read_text())
@@ -224,6 +250,18 @@ def train(
                 f"| val_loss={avg_val_loss:.4f} val_acc={val_acc:.4f}"
             )
 
+            # Log metrics to MLflow
+            if use_mlflow:
+                log_training_metrics(
+                    {
+                        "train_loss": avg_train_loss,
+                        "train_accuracy": train_acc,
+                        "val_loss": avg_val_loss,
+                        "val_accuracy": val_acc,
+                    },
+                    step=epoch,
+                )
+
             # scheduler step
             scheduler.step(avg_val_loss)
 
@@ -242,6 +280,17 @@ def train(
                 print(f"Saved best checkpoint (epoch {epoch}, val_loss={avg_val_loss:.4f})")
         else:
             print(f"Epoch {epoch}/{num_epochs} | train_loss={avg_train_loss:.4f} train_acc={train_acc:.4f}")
+            
+            # Log metrics to MLflow
+            if use_mlflow:
+                log_training_metrics(
+                    {
+                        "train_loss": avg_train_loss,
+                        "train_accuracy": train_acc,
+                    },
+                    step=epoch,
+                )
+            
             # step scheduler with train loss if no val
             scheduler.step(avg_train_loss)
 
@@ -250,6 +299,29 @@ def train(
         torch.save(item_tower.state_dict(), model_dir / "retrieval_item.pt")
 
     print(f"Training finished. Best epoch: {best_epoch} val_loss={best_val_loss:.4f}")
+
+    # Log final metrics and artifacts to MLflow
+    if use_mlflow:
+        import mlflow
+        
+        mlflow.log_metrics(
+            {
+                "best_val_loss": best_val_loss,
+                "best_epoch": best_epoch,
+            }
+        )
+        
+        # Log model artifacts
+        log_model_artifacts(model_dir, artifact_path="retrieval_models")
+        
+        # Log PyTorch models
+        user_tower.eval()
+        item_tower.eval()
+        log_pytorch_model(user_tower, artifact_path="user_tower")
+        log_pytorch_model(item_tower, artifact_path="item_tower")
+        
+        mlflow.end_run()
+        print("MLflow run completed")
 
 
 if __name__ == "__main__":
